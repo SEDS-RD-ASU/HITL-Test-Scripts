@@ -1,6 +1,11 @@
 """Contains the UART interface to communicate with the Assent board."""
+
 import time
+from logging import getLogger
+
 import serial
+
+logger = getLogger(name=__name__)
 
 
 class Assent:
@@ -34,6 +39,7 @@ class Assent:
         """
         if self.serial_connection and self.serial_connection.is_open:
             self.serial_connection.write(command)
+            logger.debug(f"Sent command: {command.hex()}")
 
     def send_command(self, command: str):
         """Send a command to the Assent board.
@@ -41,15 +47,18 @@ class Assent:
         Args:
             command (str): The command to send.
         """
-        self.raw_send(command.encode('utf-8'))
+        self.raw_send(command.encode("utf-8"))
 
     def reset_board(self):
         """Pulse RTS to reset the board (assumes RTS is wired to NRST/EN via the adapter)."""
         if not self.serial_connection or not self.serial_connection.is_open:
             raise RuntimeError("No active serial connection.")
+        logger.info("Resetting the Assent board.")
 
-        self.serial_connection.dtr = False  # GPIO0 high -> normal boot, not download mode
-        self.serial_connection.rts = True   # EN low -> chip held in reset
+        self.serial_connection.dtr = (
+            False  # GPIO0 high -> normal boot, not download mode
+        )
+        self.serial_connection.rts = True  # EN low -> chip held in reset
         time.sleep(0.1)  # Hold reset for 100ms
         self.serial_connection.rts = False  # EN high -> chip runs
         self.serial_connection.reset_input_buffer()
@@ -64,7 +73,10 @@ class Assent:
             bytes: The response from the Assent board.
         """
         if self.serial_connection and self.serial_connection.is_open:
-            return self.serial_connection.read(bytes)
+            data = self.serial_connection.read(bytes)
+            logger.debug(f"Received response: {data.hex()}")
+            return data
+        return None
 
     def read_response(self, bytes: int = 1024) -> str | None:
         """Read a response from the Assent board and decode it to a string.
@@ -77,4 +89,4 @@ class Assent:
         """
         raw_response = self.raw_response(bytes)
         if raw_response:
-            return raw_response.decode('utf-8')
+            return raw_response.decode("utf-8")
