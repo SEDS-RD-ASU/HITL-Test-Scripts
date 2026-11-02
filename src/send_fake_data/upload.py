@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.assent_interface import Assent
+from src.send_fake_data.assent_interface import Assent
 
 # ---------- flash_packet format ----------
 # Layout:
@@ -82,14 +82,13 @@ def upload_fake_data(assent: Assent, data_path: Path):
 
         now = time.perf_counter()
         sleep_time = target_time - now
+        packet = pack_row(idx, df.iloc[idx])
         if sleep_time > 0:
             time.sleep(sleep_time)
-
-        packet = pack_row(idx, df.iloc[idx])
+        assent.raw_send(packet + DELIMITER)
         if idx % 100 == 0 or idx == total - 1:
             logger.info(
                 f"\rSending sample {idx + 1}/{total} (t={df.iloc[idx]['timestamp_s']:.4f}s)"
             )
-        assent.raw_send(packet + DELIMITER)
 
     logger.info(f"\nDone sending data. Sent {total} packets at {SEND_HZ} Hz.")

@@ -1,7 +1,7 @@
 import argparse
 import pathlib
 
-from src.assent_interface.get_ports import possible_ports
+from src.send_fake_data.assent_interface.get_ports import possible_ports
 
 parser = argparse.ArgumentParser(
     prog="Hilt Test Suite",
