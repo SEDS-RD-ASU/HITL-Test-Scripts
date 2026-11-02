@@ -21,6 +21,9 @@ class Assent:
         self.port = port
         self.baudrate = baudrate
         self.serial_connection = None
+        logger.info(
+            f"Initialized Assent UART interface on port {self.port} with baudrate {self.baudrate}."
+        )
 
     def connect(self):
         """Establish a connection to the Assent board."""
