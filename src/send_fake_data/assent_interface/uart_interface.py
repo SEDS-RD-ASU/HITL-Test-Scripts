@@ -24,6 +24,7 @@ class Assent:
         logger.info(
             f"Initialized Assent UART interface on port {self.port} with baudrate {self.baudrate}."
         )
+        self.connect()
 
     def connect(self):
         """Establish a connection to the Assent board."""
