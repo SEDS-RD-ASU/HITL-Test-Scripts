@@ -3,6 +3,16 @@ import pathlib
 
 from src.send_fake_data.assent_interface.get_ports import possible_ports
 
+ports = possible_ports()
+port_devices = [port.device for port in ports]
+data_files = [
+    str(path)
+    for path in (
+        pathlib.Path(__file__).parent.parent / "send_fake_data" / "sim_flight_data"
+    ).iterdir()
+    if path.is_file()
+]
+
 parser = argparse.ArgumentParser(
     prog="Hilt Test Suite",
     description="Tests an assent board to see if the firmware is working properly.",
@@ -12,8 +22,8 @@ parser.add_argument(
     "-p",
     "--port",
     type=str,
-    choices=possible_ports(),
-    default=possible_ports()[0].device if possible_ports() else None,
+    choices=port_devices,
+    default=port_devices[0] if port_devices else None,
     help="The port to connect to the Assent board on. If not specified, the program will attempt to find the port automatically.",
 )
 parser.add_argument(
@@ -32,16 +42,12 @@ parser.add_argument(
 parser.add_argument(
     "--data-path",
     type=str,
-    choices=[
-        f
-        for f in (
-            pathlib.Path(__file__).parent.parent / "send_fake_data" / "sim_flight_data"
-        ).iterdir()
-        if f.is_file()
-    ],
-    default=pathlib.Path(__file__).parent.parent
-    / "send_fake_data"
-    / "sim_flight_data"
-    / "irec_200hz.csv",
+    choices=data_files,
+    default=str(
+        pathlib.Path(__file__).parent.parent
+        / "send_fake_data"
+        / "sim_flight_data"
+        / "irec_200hz.csv"
+    ),
     help="The path to the fake data file. Default is irec_200hz.csv.",
 )
