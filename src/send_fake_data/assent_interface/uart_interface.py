@@ -78,7 +78,12 @@ class Assent:
         """
         if self.serial_connection and self.serial_connection.is_open:
             data = self.serial_connection.read(bytes)
-            logger.debug(f"Received response: {data.hex()}")
+            if data:
+                try:
+                    text = data.decode("utf-8", errors="replace")
+                except Exception:
+                    text = data.hex()
+                logger.debug(f"Received response: {text}")
             return data
         return None
 
@@ -94,3 +99,26 @@ class Assent:
         raw_response = self.raw_response(bytes)
         if raw_response:
             return raw_response.decode("utf-8")
+        return None
+
+    def wait_for_string(self, string:str, timeout: float = 10.0):
+        """Wait for a specific string to be received from the Assent board.
+
+        Args:
+            string (str): The string to wait for.
+            timeout (float): The maximum time to wait for the string, in seconds. Default is 10.0 seconds.
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            response = self.read_response()
+            if response and string in response:
+                logger.info(f"Found expected string: {string}")
+                return
+            time.sleep(0.1)
+        raise TimeoutError("Timed out waiting for the Assent board to be ready.")
+
+    def reboot_to_data_loader(self):
+        """Reboot the Assent board into data loader mode."""
+        logger.info("Rebooting the Assent board into data loader mode.")
+        self.send_command("reboot_to_data_loader")
+        self.wait_for_string("app_main: USB_SERIAL_JTAG init done", timeout=20.0)

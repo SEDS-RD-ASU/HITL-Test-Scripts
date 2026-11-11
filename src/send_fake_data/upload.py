@@ -69,11 +69,11 @@ def upload_fake_data(assent: Assent, data_path: Path):
         assent (Assent): The Assent board interface.
         data (Path): The path to the fake data file.
     """
-    assent.reset_board()
     df = pd.read_csv(data_path)
     logger.info(f"\nLoaded {len(df)} samples from {os.path.basename(data_path)}\n")
 
     total = len(df)
+    assent.reboot_to_data_loader()
     t_start = time.perf_counter()
 
     for idx in range(total):
