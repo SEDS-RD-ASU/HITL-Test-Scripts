@@ -115,6 +115,8 @@ class Assent:
                 logger.info(f"Found expected string: {string}")
                 return
             time.sleep(0.1)
+        
+        logger.error(f"Failed to find expected string: {string} within {timeout} seconds.")
         raise TimeoutError("Timed out waiting for the Assent board to be ready.")
 
     def reboot_to_data_loader(self):
