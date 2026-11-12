@@ -21,15 +21,45 @@ FLASH_PACKET_FORMAT = "<QqfBB2xddddddIIIII BB2x fff fff fff 4x"
 FLASH_PACKET_SIZE = struct.calcsize(FLASH_PACKET_FORMAT)
 
 DELIMITER = b"\n\n\n\n"
-
-SEND_HZ = 200
-SEND_INTERVAL = 1.0 / SEND_HZ
+PREPARE_COMMAND = b"PREPARE\n"
 
 logger = getLogger(name=__name__)
 
 
 def pack_row(idx, row) -> bytes:
     """Pack a single CSV row into a flash_packet bytestring."""
+    if "n" in row:
+        return struct.pack(
+            FLASH_PACKET_FORMAT,
+            int(row["n"]),
+            int(row["timestamp"]),
+            float(row["bat_voltage"]),
+            int(row["flight_state"]),
+            int(row["pyro_cont"]),
+            float(row["pressure"]),
+            float(row["temperature"]),
+            float(row["altitude_agl"]),
+            float(row["ground_altitude"]),
+            float(row["baro_vel"]),
+            float(row["avg_baro_vel"]),
+            int(row["UTCtstamp"]),
+            int(row["lat"]) & 0xFFFFFFFF,
+            int(row["lon"]) & 0xFFFFFFFF,
+            int(row["altitude_ellipsoid"]) & 0xFFFFFFFF,
+            int(row["altitude_msl"]) & 0xFFFFFFFF,
+            int(row["fixType"]),
+            int(row["num_sats"]),
+            float(row["acc_x"]),
+            float(row["acc_y"]),
+            float(row["acc_z"]),
+            float(row["hacc_x"]),
+            float(row["hacc_y"]),
+            float(row["hacc_z"]),
+            float(row["gyr_x"]),
+            float(row["gyr_y"]),
+            float(row["gyr_z"]),
+        )
+
     return struct.pack(
         FLASH_PACKET_FORMAT,
         idx,  # n
@@ -69,16 +99,29 @@ def upload_fake_data(ASCENT: ASCENT, data_path: Path):
         ASCENT (ASCENT): The ASCENT board interface.
         data (Path): The path to the fake data file.
     """
-    df = pd.read_csv(data_path)
+    df = pd.read_csv(data_path, skipinitialspace=True)
+    df.columns = df.columns.str.strip()
     logger.info(f"\nLoaded {len(df)} samples from {os.path.basename(data_path)}\n")
 
     total = len(df)
+    sample_times = (
+        df["timestamp_s"].astype(float).tolist()
+        if "timestamp_s" in df.columns
+        else (df["timestamp"].astype(float) / 1e6).tolist()
+    )
+    nominal_hz = (
+        1.0 / (sample_times[1] - sample_times[0])
+        if total > 1 and sample_times[1] > sample_times[0]
+        else None
+    )
     ASCENT.reboot_to_data_loader()
+    ASCENT.raw_send(PREPARE_COMMAND)
+    ASCENT.wait_for_string("SITL data is ready to enter flight computer", timeout=360.0) # erasing a bank takes lots of time :(
     t_start = time.perf_counter()
 
     for idx in range(total):
-        # Schedule next send relative to start to avoid drift
-        target_time = t_start + idx * SEND_INTERVAL
+        # Preserve the source dataset's sample timing and avoid cumulative drift.
+        target_time = t_start + sample_times[idx] - sample_times[0]
 
         now = time.perf_counter()
         sleep_time = target_time - now
@@ -87,8 +130,14 @@ def upload_fake_data(ASCENT: ASCENT, data_path: Path):
             time.sleep(sleep_time)
         ASCENT.raw_send(packet + DELIMITER)
         if idx % 100 == 0 or idx == total - 1:
+            timestamp = (
+                float(df.iloc[idx]["timestamp_s"])
+                if "timestamp_s" in df.columns
+                else float(df.iloc[idx]["timestamp"]) / 1e6
+            )
             logger.info(
-                f"\rSending sample {idx + 1}/{total} (t={df.iloc[idx]['timestamp_s']:.4f}s)"
+                f"\rSending sample {idx + 1}/{total} (t={timestamp:.4f}s)"
             )
 
-    logger.info(f"\nDone sending data. Sent {total} packets at {SEND_HZ} Hz.")
+    rate = f"{nominal_hz:.0f} Hz" if nominal_hz is not None else "source timing"
+    logger.info(f"\nDone sending data. Sent {total} packets at {rate}.")

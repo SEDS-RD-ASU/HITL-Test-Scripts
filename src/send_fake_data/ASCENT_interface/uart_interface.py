@@ -28,7 +28,7 @@ class ASCENT:
 
     def connect(self):
         """Establish a connection to the ASCENT board."""
-        self.serial_connection = serial.Serial(self.port, self.baudrate)
+        self.serial_connection = serial.Serial(self.port, self.baudrate, timeout=0.1)
 
     def disconnect(self):
         """Close the connection to the ASCENT board."""
@@ -83,7 +83,7 @@ class ASCENT:
                     text = data.decode("utf-8", errors="replace")
                 except Exception:
                     text = data.hex()
-                logger.debug(f"Received response: {text}")
+                logger.info(f"Received response: {text}")
             return data
         return None
 
@@ -101,17 +101,20 @@ class ASCENT:
             return raw_response.decode("utf-8")
         return None
 
-    def wait_for_string(self, string:str, timeout: float = 10.0):
+    def wait_for_string(self, string: str, timeout: float = 85000.0):
         """Wait for a specific string to be received from the ASCENT board.
 
         Args:
             string (str): The string to wait for.
-            timeout (float): The maximum time to wait for the string, in seconds. Default is 10.0 seconds.
+            timeout (float): The maximum time to wait for the string, in seconds. Default is 85.0 seconds.
         """
         start_time = time.time()
+        received = ""
         while time.time() - start_time < timeout:
             response = self.read_response()
-            if response and string in response:
+            if response:
+                received += response
+            if string in received:
                 logger.info(f"Found expected string: {string}")
                 return
             time.sleep(0.1)
@@ -120,5 +123,5 @@ class ASCENT:
     def reboot_to_data_loader(self):
         """Reboot the ASCENT board into data loader mode."""
         logger.info("Rebooting the ASCENT board into data loader mode.")
-        self.send_command("reboot_to_data_loader")
-        self.wait_for_string("app_main: USB_SERIAL_JTAG init done", timeout=20.0)
+        self.reset_board()
+        self.wait_for_string("app_main: USB_SERIAL_JTAG init done")
