@@ -1,7 +1,7 @@
 import argparse
 import pathlib
 
-from src.send_fake_data.assent_interface.get_ports import possible_ports
+from src.send_fake_data.ASCENT_interface.get_ports import possible_ports
 
 ports = possible_ports()
 port_devices = [port.device for port in ports]
@@ -15,7 +15,7 @@ data_files = [
 
 parser = argparse.ArgumentParser(
     prog="Hilt Test Suite",
-    description="Tests an assent board to see if the firmware is working properly.",
+    description="Tests an ASCENT board to see if the firmware is working properly.",
     epilog="2026 SEDS-RD HITL Test Suite - GPLv3 License",
 )
 parser.add_argument(
@@ -24,7 +24,7 @@ parser.add_argument(
     type=str,
     choices=port_devices,
     default=port_devices[0] if port_devices else None,
-    help="The port to connect to the Assent board on. If not specified, the program will attempt to find the port automatically.",
+    help="The port to connect to the ASCENT board on. If not specified, the program will attempt to find the port automatically.",
 )
 parser.add_argument(
     "--log-level",

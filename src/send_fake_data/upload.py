@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.send_fake_data.assent_interface import Assent
+from src.send_fake_data.ASCENT_interface import ASCENT
 
 # ---------- flash_packet format ----------
 # Layout:
@@ -62,18 +62,18 @@ def pack_row(idx, row) -> bytes:
     )
 
 
-def upload_fake_data(assent: Assent, data_path: Path):
-    """Uploads the fake data to Assent.
+def upload_fake_data(ASCENT: ASCENT, data_path: Path):
+    """Uploads the fake data to ASCENT.
 
     Args:
-        assent (Assent): The Assent board interface.
+        ASCENT (ASCENT): The ASCENT board interface.
         data (Path): The path to the fake data file.
     """
     df = pd.read_csv(data_path)
     logger.info(f"\nLoaded {len(df)} samples from {os.path.basename(data_path)}\n")
 
     total = len(df)
-    assent.reboot_to_data_loader()
+    ASCENT.reboot_to_data_loader()
     t_start = time.perf_counter()
 
     for idx in range(total):
@@ -85,7 +85,7 @@ def upload_fake_data(assent: Assent, data_path: Path):
         packet = pack_row(idx, df.iloc[idx])
         if sleep_time > 0:
             time.sleep(sleep_time)
-        assent.raw_send(packet + DELIMITER)
+        ASCENT.raw_send(packet + DELIMITER)
         if idx % 100 == 0 or idx == total - 1:
             logger.info(
                 f"\rSending sample {idx + 1}/{total} (t={df.iloc[idx]['timestamp_s']:.4f}s)"
