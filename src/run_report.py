@@ -2,6 +2,7 @@ import csv
 import json
 import os
 import subprocess
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -90,7 +91,7 @@ def _multipart_payload(message: str, plot_path: Path) -> tuple[bytes, str]:
         "Content-Type: application/json\r\n\r\n"
         f"{json.dumps({'content': message})}\r\n",
         f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="file"; filename="{plot_path.name}"\r\n'
+        f'Content-Disposition: form-data; name="files[0]"; filename="{plot_path.name}"\r\n'
         "Content-Type: image/png\r\n\r\n",
     ]
     body = parts[0].encode("utf-8") + parts[1].encode("utf-8")
@@ -113,8 +114,18 @@ def send_run_report(plot_path: Path, skipped: int, commit_link: str) -> None:
     request = urllib.request.Request(
         webhook_url,
         data=body,
-        headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+        headers={
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+            "User-Agent": "HITL-Test-Scripts/1.0",
+            "Accept": "application/json",
+        },
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=30):
-        pass
+    try:
+        with urllib.request.urlopen(request, timeout=30):
+            pass
+    except urllib.error.HTTPError as error:
+        details = error.read().decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"Discord rejected the webhook ({error.code}): {details}"
+        ) from error
