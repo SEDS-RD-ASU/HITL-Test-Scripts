@@ -68,9 +68,8 @@ parser.add_argument(
 )
 parser.add_argument(
     "--data-path",
-    type=str,
-    choices=data_files,
-    default=str(default_data_path),
+    type=pathlib.Path,
+    default=default_data_path,
     help="The path to the fake data file. Defaults to scratchy_flight_data.csv.",
 )
 parser.add_argument(
