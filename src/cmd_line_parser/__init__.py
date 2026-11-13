@@ -88,3 +88,9 @@ parser.add_argument(
     action="store_true",
     help="Skip building, flashing, and data upload; only dump the latest bank.",
 )
+parser.add_argument(
+    "--prebuilt-dir",
+    type=pathlib.Path,
+    default=None,
+    help="Flash prebuilt binaries from this directory (must contain flash_args) instead of building.",
+)
