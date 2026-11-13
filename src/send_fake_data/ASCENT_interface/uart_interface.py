@@ -1,4 +1,4 @@
-"""Contains the UART interface to communicate with the Assent board."""
+"""Contains the UART interface to communicate with the ASCENT board."""
 
 import time
 from logging import getLogger
@@ -8,35 +8,35 @@ import serial
 logger = getLogger(name=__name__)
 
 
-class Assent:
-    """Class to handle UART communication with the Assent board."""
+class ASCENT:
+    """Class to handle UART communication with the ASCENT board."""
 
     def __init__(self, port: str, baudrate: int):
         """Initialize the UART interface.
 
         Args:
-            port (str): The port to connect to the Assent board.
+            port (str): The port to connect to the ASCENT board.
             baudrate (int): The baud rate for the UART communication.
         """
         self.port = port
         self.baudrate = baudrate
         self.serial_connection = None
         logger.info(
-            f"Initialized Assent UART interface on port {self.port} with baudrate {self.baudrate}."
+            f"Initialized ASCENT UART interface on port {self.port} with baudrate {self.baudrate}."
         )
         self.connect()
 
     def connect(self):
-        """Establish a connection to the Assent board."""
-        self.serial_connection = serial.Serial(self.port, self.baudrate)
+        """Establish a connection to the ASCENT board."""
+        self.serial_connection = serial.Serial(self.port, self.baudrate, timeout=0.1)
 
     def disconnect(self):
-        """Close the connection to the Assent board."""
+        """Close the connection to the ASCENT board."""
         if self.serial_connection and self.serial_connection.is_open:
             self.serial_connection.close()
 
     def raw_send(self, command: bytes):
-        """Send a command to the Assent board.
+        """Send a command to the ASCENT board.
 
         Args:
             command (bytes): The command to send.
@@ -46,7 +46,7 @@ class Assent:
             logger.debug(f"Sent command: {command.hex()}")
 
     def send_command(self, command: str):
-        """Send a command to the Assent board.
+        """Send a command to the ASCENT board.
 
         Args:
             command (str): The command to send.
@@ -57,7 +57,7 @@ class Assent:
         """Pulse RTS to reset the board (assumes RTS is wired to NRST/EN via the adapter)."""
         if not self.serial_connection or not self.serial_connection.is_open:
             raise RuntimeError("No active serial connection.")
-        logger.info("Resetting the Assent board.")
+        logger.info("Resetting the ASCENT board.")
 
         self.serial_connection.dtr = (
             False  # GPIO0 high -> normal boot, not download mode
@@ -68,13 +68,13 @@ class Assent:
         self.serial_connection.reset_input_buffer()
 
     def raw_response(self, bytes: int = 1024) -> bytes | None:
-        """Read a response from the Assent board.
+        """Read a response from the ASCENT board.
 
         Args:
-            bytes (int): The number of bytes to read from the Assent board. Default is 1024.
+            bytes (int): The number of bytes to read from the ASCENT board. Default is 1024.
 
         Returns:
-            bytes: The response from the Assent board.
+            bytes: The response from the ASCENT board.
         """
         if self.serial_connection and self.serial_connection.is_open:
             data = self.serial_connection.read(bytes)
@@ -83,44 +83,47 @@ class Assent:
                     text = data.decode("utf-8", errors="replace")
                 except Exception:
                     text = data.hex()
-                logger.debug(f"Received response: {text}")
+                logger.info(f"Received response: {text}")
             return data
         return None
 
     def read_response(self, bytes: int = 1024) -> str | None:
-        """Read a response from the Assent board and decode it to a string.
+        """Read a response from the ASCENT board and decode it to a string.
 
         Args:
-            bytes (int): The number of bytes to read from the Assent board. Default is 1024.
+            bytes (int): The number of bytes to read from the ASCENT board. Default is 1024.
 
         Returns:
-            str: The response from the Assent board as a string.
+            str: The response from the ASCENT board as a string.
         """
         raw_response = self.raw_response(bytes)
         if raw_response:
             return raw_response.decode("utf-8")
         return None
 
-    def wait_for_string(self, string:str, timeout: float = 10.0):
-        """Wait for a specific string to be received from the Assent board.
+    def wait_for_string(self, string: str, timeout: float = 85000.0):
+        """Wait for a specific string to be received from the ASCENT board.
 
         Args:
             string (str): The string to wait for.
-            timeout (float): The maximum time to wait for the string, in seconds. Default is 10.0 seconds.
+            timeout (float): The maximum time to wait for the string, in seconds. Default is 85.0 seconds.
         """
         start_time = time.time()
+        received = ""
         while time.time() - start_time < timeout:
             response = self.read_response()
-            if response and string in response:
+            if response:
+                received += response
+            if string in received:
                 logger.info(f"Found expected string: {string}")
                 return
             time.sleep(0.1)
         
         logger.error(f"Failed to find expected string: {string} within {timeout} seconds.")
-        raise TimeoutError("Timed out waiting for the Assent board to be ready.")
+        raise TimeoutError("Timed out waiting for the ASCENT board to be ready.")
 
     def reboot_to_data_loader(self):
-        """Reboot the Assent board into data loader mode."""
-        logger.info("Rebooting the Assent board into data loader mode.")
-        self.send_command("reboot_to_data_loader")
-        self.wait_for_string("app_main: USB_SERIAL_JTAG init done", timeout=20.0)
+        """Reboot the ASCENT board into data loader mode."""
+        logger.info("Rebooting the ASCENT board into data loader mode.")
+        self.reset_board()
+        self.wait_for_string("app_main: USB_SERIAL_JTAG init done")
