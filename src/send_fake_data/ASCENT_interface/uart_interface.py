@@ -83,7 +83,7 @@ class ASCENT:
                     text = data.decode("utf-8", errors="replace")
                 except Exception:
                     text = data.hex()
-                logger.info(f"Received response: {text}")
+                logger.debug(f"Received response: {text}")
             return data
         return None
 
@@ -115,9 +115,8 @@ class ASCENT:
             if response:
                 received += response
             if string in received:
-                logger.info(f"Found expected string: {string}")
+                logger.debug(f"Found expected string: {string}")
                 return
-            time.sleep(0.1)
         
         logger.error(f"Failed to find expected string: {string} within {timeout} seconds.")
         raise TimeoutError("Timed out waiting for expected string.")
@@ -138,13 +137,11 @@ class ASCENT:
         self.send_command("DUMP")
         # We then get a statement "Enter the bank to dump (last bank used: %ld):\n" and need to extract the bank number from it.
         line = self.read_response()
-        if line:
-            logger.info(f"Received line: {line.strip()}")
-            if "last bank used:" in line:
-                try:
-                    last_bank = int(line.split("last bank used:")[1].strip().split()[0])
-                    logger.info(f"Last bank used: {last_bank}")
-                    return last_bank
-                except ValueError:
-                    logger.error("Failed to parse last bank number.")
-                    raise
+        if line and "last bank used:" in line:
+            try:
+                last_bank = int(line.split("last bank used:")[1].strip().split()[0])
+                logger.info(f"Last bank used: {last_bank}")
+                return last_bank
+            except ValueError:
+                logger.error("Failed to parse last bank number.")
+                raise
