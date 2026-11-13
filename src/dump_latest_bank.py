@@ -1,5 +1,6 @@
 import re
 import select
+import struct
 import subprocess
 import time
 from logging import getLogger
@@ -11,6 +12,15 @@ import serial
 FIRMWARE_DIR = "/home/hitl/ascent-r3-firmware"
 IDF_ACTIVATE = "/home/hitl/.espressif/tools/activate_idf_v6.1.sh"
 CSV_HEADER = "n, timestamp, bat_voltage"
+CSV_HEADER_FULL = (
+    "n, timestamp, bat_voltage, flight_state, pyro_cont, pressure, temperature, "
+    "altitude_agl, ground_altitude, baro_vel, avg_baro_vel, UTCtstamp, lat, lon, "
+    "altitude_ellipsoid, altitude_msl, fixType, num_sats, acc_x, acc_y, acc_z, "
+    "hacc_x, hacc_y, hacc_z, gyr_x, gyr_y, gyr_z"
+)
+# Mirrors flash_packet in the firmware (see src/send_fake_data/upload.py).
+FLASH_PACKET_FORMAT = "<QqfBB2xddddddIIIII BB2x fff fff fff 4x"
+FLASH_PACKET_SIZE = struct.calcsize(FLASH_PACKET_FORMAT)
 MONITOR_LINES_TO_READ = 4
 DUMP_PROMPT_MARKER = "Enter the bank to dump (last bank used:"
 PACKET_LOG_INTERVAL = 2_000
@@ -93,43 +103,51 @@ def dump_latest_bank(port: str, baudrate: int, output_path: Path) -> None:
         logger.debug("Requesting flash bank %d.", bank)
         connection.write(f"{bank}\n".encode("ascii"))
 
-        collecting = False
-        packet_count = 0
-        csv_line_count = 0
-
-        deadline = time.monotonic() + 300.0
-        while time.monotonic() < deadline:
+        deadline = time.monotonic() + 60.0
+        while True:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("Timed out waiting for the binary dump to start.")
             line = connection.readline().decode("utf-8", errors="replace")
-            if not line:
-                continue
-            prompt_index = line.find(DUMP_PROMPT_MARKER) if collecting else -1
-            finished_index = line.find("FINISHED DUMPING DATA") if collecting else -1
-            end_index = min(
-                (index for index in (prompt_index, finished_index) if index >= 0),
-                default=-1,
-            )
-            if end_index >= 0:
-                row_before_prompt = line[:end_index]
-                if row_before_prompt:
-                    output_file.write(row_before_prompt)
-                    output_file.flush()
-                logger.debug("Next dump prompt detected; stopping the current dump.")
+            match = re.search(r"BINARY DUMP START (\d+)", line)
+            if match:
                 break
-            if line.startswith(CSV_HEADER):
-                collecting = True
-                logger.debug("Flash dump CSV header received.")
-            if collecting:
-                output_file.write(line)
-                output_file.flush()
-                csv_line_count += 1
-                if not line.startswith(CSV_HEADER):
-                    packet_count += 1
-                    if packet_count % PACKET_LOG_INTERVAL == 0:
-                        logger.info("Downloaded %d flash packets.", packet_count)
-        else:
-            raise TimeoutError("Timed out waiting for the flash dump to finish.")
+        packet_size = int(match.group(1))
+        if packet_size != FLASH_PACKET_SIZE:
+            raise RuntimeError(
+                f"Firmware packet size {packet_size} != expected {FLASH_PACKET_SIZE}."
+            )
 
-    if not collecting:
-        raise RuntimeError("The firmware completed the dump without returning CSV data.")
+        output_file.write(CSV_HEADER_FULL + "\n")
+        packet_count = 0
+        deadline = time.monotonic() + 300.0
+        while True:
+            (length,) = struct.unpack("<I", _read_exact(connection, 4, deadline))
+            if length == 0:
+                break
+            if length % packet_size:
+                raise RuntimeError(f"Dump chunk of {length} bytes is not a whole number of packets.")
+            chunk = _read_exact(connection, length, deadline)
+            for fields in struct.iter_unpack(FLASH_PACKET_FORMAT, chunk):
+                output_file.write(_format_row(fields))
+                packet_count += 1
+                if packet_count % PACKET_LOG_INTERVAL == 0:
+                    logger.info("Downloaded %d flash packets.", packet_count)
+
     logger.info("Downloaded %d flash packets.", packet_count)
-    logger.debug("Wrote %d CSV lines to %s.", csv_line_count, output_path)
+    logger.debug("Wrote %d packets to %s.", packet_count, output_path)
+
+
+def _read_exact(connection: serial.Serial, size: int, deadline: float) -> bytes:
+    data = bytearray()
+    while len(data) < size:
+        if time.monotonic() >= deadline:
+            raise TimeoutError("Timed out waiting for the flash dump to finish.")
+        data += connection.read(size - len(data))
+    return bytes(data)
+
+
+def _format_row(fields: tuple) -> str:
+    # Same column order and formatting as the old firmware-side CSV (floats as %f).
+    return ",".join(
+        f"{value:.6f}" if isinstance(value, float) else str(value) for value in fields
+    ) + "\n"
