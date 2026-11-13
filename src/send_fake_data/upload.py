@@ -9,7 +9,7 @@ import pandas as pd
 
 from src.send_fake_data.ASCENT_interface import ASCENT
 
-SEND_RATE_HZ = 500
+SEND_RATE_HZ = 1000
 
 # ---------- flash_packet format ----------
 # Layout:
