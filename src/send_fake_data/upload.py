@@ -4,9 +4,12 @@ import time
 from logging import getLogger
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from src.send_fake_data.ASCENT_interface import ASCENT
+
+SEND_RATE_HZ = 500
 
 # ---------- flash_packet format ----------
 # Layout:
@@ -92,6 +95,28 @@ def pack_row(idx, row) -> bytes:
     )
 
 
+def resample(df: pd.DataFrame, sample_times: list, rate_hz: float):
+    """Resample to a fixed rate: floats are linearly interpolated, other columns hold the previous value."""
+    t = np.asarray(sample_times, dtype=float)
+    new_t = np.arange(t[0], t[-1], 1.0 / rate_hz)
+    prev = np.searchsorted(t, new_t, side="right") - 1
+    out = pd.DataFrame(
+        {
+            col: np.interp(new_t, t, df[col].to_numpy(dtype=float))
+            if pd.api.types.is_float_dtype(df[col])
+            else df[col].to_numpy()[prev]
+            for col in df.columns
+        }
+    )
+    if "timestamp_s" in out.columns:
+        out["timestamp_s"] = new_t
+    if "timestamp" in out.columns:
+        out["timestamp"] = np.round(new_t * 1e6).astype(np.int64)
+    if "n" in out.columns:
+        out["n"] = np.arange(len(out)) + int(df["n"].iloc[0])
+    return out, new_t.tolist()
+
+
 def upload_fake_data(ASCENT: ASCENT, data_path: Path):
     """Uploads the fake data to ASCENT.
 
@@ -109,11 +134,10 @@ def upload_fake_data(ASCENT: ASCENT, data_path: Path):
         if "timestamp_s" in df.columns
         else (df["timestamp"].astype(float) / 1e6).tolist()
     )
-    nominal_hz = (
-        1.0 / (sample_times[1] - sample_times[0])
-        if total > 1 and sample_times[1] > sample_times[0]
-        else None
-    )
+    df, sample_times = resample(df, sample_times, SEND_RATE_HZ)
+    total = len(df)
+    nominal_hz = SEND_RATE_HZ
+    packets = [pack_row(idx, row) for idx, row in enumerate(df.to_dict("records"))]
     ASCENT.reboot_to_data_loader()
     ASCENT.raw_send(PREPARE_COMMAND)
     ASCENT.wait_for_string("SITL data is ready to enter flight computer", timeout=360.0) # erasing a bank takes lots of time :(
@@ -125,7 +149,7 @@ def upload_fake_data(ASCENT: ASCENT, data_path: Path):
 
         now = time.perf_counter()
         sleep_time = target_time - now
-        packet = pack_row(idx, df.iloc[idx])
+        packet = packets[idx]
         if sleep_time > 0:
             time.sleep(sleep_time)
         ASCENT.raw_send(packet + DELIMITER)
