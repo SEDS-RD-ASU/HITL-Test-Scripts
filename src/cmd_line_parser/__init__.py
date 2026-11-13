@@ -23,27 +23,10 @@ def default_dump_path() -> pathlib.Path:
 
 ports = possible_ports()
 port_devices = [port.device for port in ports]
-legacy_data_dir = pathlib.Path(__file__).parent.parent / "send_fake_data" / "sim_flight_data"
-legacy_scratchy_data_path = legacy_data_dir / "scratchy_flight_data.csv"
-data_files = [
-    str(path)
-    for path in legacy_data_dir.iterdir()
-    if path.is_file()
-]
-sitl_dir = pathlib.Path(
-    os.environ.get("SITL_DIR", str(SCRIPT_DIR.parent / "ascent-sitl"))
-)
-scratchy_data_path = sitl_dir / "sim_flight_data" / "scratchy_flight_data.csv"
-if scratchy_data_path.is_file():
-    data_files.append(str(scratchy_data_path))
-default_data_path = (
-    scratchy_data_path if scratchy_data_path.is_file()
-    else (
-        legacy_scratchy_data_path
-        if legacy_scratchy_data_path.is_file()
-        else legacy_data_dir / "packets_1_200hz.csv"
-    )
-)
+
+data_dir = pathlib.Path(__file__).parent.parent / "send_fake_data" / "sim_flight_data"
+data_files = [str(path) for path in data_dir.iterdir() if path.is_file()]
+default_data_path = data_dir / "scratchy_flight_data.csv" if (data_dir / "scratchy_flight_data.csv").exists() else data_files[0]
 
 parser = argparse.ArgumentParser(
     prog="Hilt Test Suite",
@@ -86,11 +69,11 @@ parser.add_argument(
 parser.add_argument(
     "--dump-only",
     action="store_true",
-    help="Skip building, flashing, and data upload; only dump the latest bank.",
+    help="Only dump the latest bank and analyze it, skipping the upload of fake data.",
 )
 parser.add_argument(
-    "--prebuilt-dir",
-    type=pathlib.Path,
-    default=None,
-    help="Flash prebuilt binaries from this directory (must contain flash_args) instead of building.",
+    "--discord-webhook-url",
+    type=str,
+    help="The URL of the Discord webhook to send the run report to.",
+    default=None
 )

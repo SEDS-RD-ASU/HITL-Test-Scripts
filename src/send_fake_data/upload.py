@@ -4,8 +4,8 @@ import time
 from logging import getLogger
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 from src.send_fake_data.ASCENT_interface import ASCENT
 
@@ -24,7 +24,7 @@ FLASH_PACKET_FORMAT = "<QqfBB2xddddddIIIII BB2x fff fff fff 4x"
 FLASH_PACKET_SIZE = struct.calcsize(FLASH_PACKET_FORMAT)
 
 DELIMITER = b"\n\n\n\n"
-PREPARE_COMMAND = b"PREPARE\n"
+PREPARE_COMMAND = "PREPARE\n"
 
 logger = getLogger(name=__name__)
 
@@ -76,7 +76,7 @@ def pack_row(idx, row) -> bytes:
         0.0,  # ground_altitude
         0.0,  # baro_vel
         0.0,  # avg_baro_vel
-        0,  # UTCtstamp
+        time.time(),  # UTCtstamp
         int(row["latitude"]) & 0xFFFFFFFF,  # lat
         int(row["longitude"]) & 0xFFFFFFFF,  # lon
         0,  # alt_ellipsoid
@@ -93,29 +93,6 @@ def pack_row(idx, row) -> bytes:
         float(row["gyry"]),  # gyr_y
         float(row["gyrz"]),  # gyr_z
     )
-
-
-def resample(df: pd.DataFrame, sample_times: list, rate_hz: float):
-    """Resample to a fixed rate: floats are linearly interpolated, other columns hold the previous value."""
-    t = np.asarray(sample_times, dtype=float)
-    new_t = np.arange(t[0], t[-1], 1.0 / rate_hz)
-    prev = np.searchsorted(t, new_t, side="right") - 1
-    out = pd.DataFrame(
-        {
-            col: np.interp(new_t, t, df[col].to_numpy(dtype=float))
-            if pd.api.types.is_float_dtype(df[col])
-            else df[col].to_numpy()[prev]
-            for col in df.columns
-        }
-    )
-    if "timestamp_s" in out.columns:
-        out["timestamp_s"] = new_t
-    if "timestamp" in out.columns:
-        out["timestamp"] = np.round(new_t * 1e6).astype(np.int64)
-    if "n" in out.columns:
-        out["n"] = np.arange(len(out)) + int(df["n"].iloc[0])
-    return out, new_t.tolist()
-
 
 def upload_fake_data(ASCENT: ASCENT, data_path: Path):
     """Uploads the fake data to ASCENT.
@@ -134,34 +111,25 @@ def upload_fake_data(ASCENT: ASCENT, data_path: Path):
         if "timestamp_s" in df.columns
         else (df["timestamp"].astype(float) / 1e6).tolist()
     )
-    df, sample_times = resample(df, sample_times, SEND_RATE_HZ)
     total = len(df)
-    nominal_hz = SEND_RATE_HZ
     packets = [pack_row(idx, row) for idx, row in enumerate(df.to_dict("records"))]
     ASCENT.reboot_to_data_loader()
-    ASCENT.raw_send(PREPARE_COMMAND)
+    ASCENT.send_command(PREPARE_COMMAND)
     ASCENT.wait_for_string("SITL data is ready to enter flight computer", timeout=360.0) # erasing a bank takes lots of time :(
     t_start = time.perf_counter()
 
-    for idx in range(total):
+    for idx in tqdm(range(total), desc="Sending Data", mininterval=10, unit="dataframes"):
         # Preserve the source dataset's sample timing and avoid cumulative drift.
         target_time = t_start + sample_times[idx] - sample_times[0]
+        sleep_time = target_time - time.perf_counter()
 
-        now = time.perf_counter()
-        sleep_time = target_time - now
         packet = packets[idx]
+        
         if sleep_time > 0:
             time.sleep(sleep_time)
-        ASCENT.raw_send(packet + DELIMITER)
-        if idx % 100 == 0 or idx == total - 1:
-            timestamp = (
-                float(df.iloc[idx]["timestamp_s"])
-                if "timestamp_s" in df.columns
-                else float(df.iloc[idx]["timestamp"]) / 1e6
-            )
-            logger.info(
-                f"\rSending sample {idx + 1}/{total} (t={timestamp:.4f}s)"
-            )
 
-    rate = f"{nominal_hz:.0f} Hz" if nominal_hz is not None else "source timing"
-    logger.info(f"\nDone sending data. Sent {total} packets at {rate}.")
+        ASCENT.raw_send(packet + DELIMITER)
+        ASCENT.wait_for_string("SITL ACK", timeout=1.0)
+
+
+    logger.info(f"\nDone sending data. Sent {total} packets.")
