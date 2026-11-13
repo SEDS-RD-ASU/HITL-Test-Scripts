@@ -17,15 +17,20 @@ FIRMWARE_DIR = Path(
 )
 
 
-def _read_timestamps(dump_path: Path) -> list[tuple[int, int]]:
+def _read_packets(dump_path: Path) -> list[tuple[int, int, float, int]]:
     packets = []
     with dump_path.open(newline="", encoding="utf-8") as dump_file:
-        for row in csv.reader(dump_file):
-            if len(row) < 2 or row[0].strip() == "n":
-                continue
+        for row in csv.DictReader(dump_file, skipinitialspace=True):
             try:
-                packets.append((int(row[0]), int(row[1])))
-            except ValueError:
+                packets.append(
+                    (
+                        int(row["n"]),
+                        int(row["timestamp"]),
+                        float(row["altitude_agl"]),
+                        int(row["flight_state"]),
+                    )
+                )
+            except (KeyError, TypeError, ValueError):
                 continue
     return packets
 
@@ -52,17 +57,19 @@ def _commit_link() -> str:
 
 
 def create_run_report(dump_path: Path) -> tuple[Path, int, str]:
-    packets = _read_timestamps(dump_path)
+    packets = _read_packets(dump_path)
     if not packets:
         raise RuntimeError(f"No valid packet timestamps found in {dump_path}.")
 
     skipped = sum(
         max(current_n - previous_n - 1, 0)
-        for (previous_n, _), (current_n, _) in zip(packets, packets[1:])
+        for (previous_n, _, _, _), (current_n, _, _, _)
+        in zip(packets, packets[1:])
     )
     delta_t = [
         (current_n, current_timestamp - previous_timestamp)
-        for (previous_n, previous_timestamp), (current_n, current_timestamp)
+        for (previous_n, previous_timestamp, _, _),
+        (current_n, current_timestamp, _, _)
         in zip(packets, packets[1:])
         if current_n > previous_n
     ]
@@ -77,6 +84,29 @@ def create_run_report(dump_path: Path) -> tuple[Path, int, str]:
     axis.set_xlabel("Packet number")
     axis.set_ylabel("Delta T (microseconds)")
     axis.grid(True)
+    altitude_axis = axis.twinx()
+    altitude_axis.plot(
+        [packet[0] for packet in packets],
+        [packet[2] for packet in packets],
+        color="tab:green",
+        alpha=0.7,
+        linewidth=1,
+    )
+    altitude_axis.set_ylabel("Altitude AGL (m)", color="tab:green")
+    altitude_axis.tick_params(axis="y", labelcolor="tab:green")
+
+    flight_state_axis = axis.twinx()
+    flight_state_axis.spines["right"].set_position(("outward", 60))
+    flight_state_axis.step(
+        [packet[0] for packet in packets],
+        [packet[3] for packet in packets],
+        where="post",
+        color="tab:red",
+        alpha=0.8,
+        linewidth=1,
+    )
+    flight_state_axis.set_ylabel("Flight state", color="tab:red")
+    flight_state_axis.tick_params(axis="y", labelcolor="tab:red")
     figure.tight_layout()
     figure.savefig(plot_path, dpi=150)
     plt.close(figure)

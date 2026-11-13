@@ -24,6 +24,7 @@ def default_dump_path() -> pathlib.Path:
 ports = possible_ports()
 port_devices = [port.device for port in ports]
 legacy_data_dir = pathlib.Path(__file__).parent.parent / "send_fake_data" / "sim_flight_data"
+legacy_scratchy_data_path = legacy_data_dir / "scratchy_flight_data.csv"
 data_files = [
     str(path)
     for path in legacy_data_dir.iterdir()
@@ -37,7 +38,11 @@ if scratchy_data_path.is_file():
     data_files.append(str(scratchy_data_path))
 default_data_path = (
     scratchy_data_path if scratchy_data_path.is_file()
-    else legacy_data_dir / "packets_1_200hz.csv"
+    else (
+        legacy_scratchy_data_path
+        if legacy_scratchy_data_path.is_file()
+        else legacy_data_dir / "packets_1_200hz.csv"
+    )
 )
 
 parser = argparse.ArgumentParser(
@@ -63,8 +68,8 @@ parser.add_argument(
 parser.add_argument(
     "--baudrate",
     type=int,
-    default=115200,
-    help="The baud rate to use for the UART communication. Default is 115200.",
+    default=921600,
+    help="The baud rate to use for the UART communication. Default is 921600.",
 )
 parser.add_argument(
     "--data-path",
