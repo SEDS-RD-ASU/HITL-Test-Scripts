@@ -115,6 +115,8 @@ def upload_fake_data(ASCENT: ASCENT, data_path: Path):
     packets = [pack_row(idx, row) for idx, row in enumerate(df.to_dict("records"))]
     ASCENT.reboot_to_data_loader()
     ASCENT.send_command(PREPARE_COMMAND)
+    logger.info("Eracing flash chip. Note this will take a while (~5 minutes) with no feedback. Please be patient...")
+    # TODO: analysis the numbers that are send over the wire to see if we can get a progress bar.
     ASCENT.wait_for_string("SITL data is ready to enter flight computer", timeout=360.0) # erasing a bank takes lots of time :(
     t_start = time.perf_counter()
 
