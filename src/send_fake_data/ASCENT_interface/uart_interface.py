@@ -1,4 +1,5 @@
 """Contains the UART interface to communicate with the ASCENT board."""
+from time import sleep
 
 import time
 from logging import getLogger
@@ -101,7 +102,7 @@ class ASCENT:
             return raw_response.decode("utf-8")
         return None
 
-    def wait_for_string(self, string: str, timeout: float = 85000.0):
+    def wait_for_string(self, string: str, timeout: float = 85.0):
         """Wait for a specific string to be received from the ASCENT board.
 
         Args:
@@ -117,6 +118,7 @@ class ASCENT:
             if string in received:
                 logger.debug(f"Found expected string: {string}")
                 return
+            sleep(1e-4)  # Sleep for 0.1ms to avoid busy waiting
         
         logger.error(f"Failed to find expected string: {string} within {timeout} seconds.")
         raise TimeoutError("Timed out waiting for expected string.")
