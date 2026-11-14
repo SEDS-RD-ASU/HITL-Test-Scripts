@@ -78,7 +78,9 @@ class ASCENT:
             bytes: The response from the ASCENT board.
         """
         if self.serial_connection and self.serial_connection.is_open:
-            data = self.serial_connection.read(bytes)
+            data = self.serial_connection.read(1)
+            if data and self.serial_connection.in_waiting:
+                data += self.serial_connection.read(self.serial_connection.in_waiting)
             if data:
                 try:
                     text = data.decode("utf-8", errors="replace")
