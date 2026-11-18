@@ -1,8 +1,8 @@
 """Contains the UART interface to communicate with the ASCENT board."""
-from time import sleep
-
+import re
 import time
 from logging import getLogger
+from time import sleep
 
 import serial
 
@@ -147,10 +147,11 @@ class ASCENT:
             if response:
                 line += response.strip()
             if line and "last bank used:" in line:
-                try:
-                    last_bank = int(line.split("last bank used:")[1].strip().split()[0])
+                match = re.search(r"last bank used:\s*(\d+)", line)
+                if match:
+                    last_bank = int(match.group(1))
                     logger.info(f"Last bank used: {last_bank}")
                     return last_bank
-                except ValueError:
-                    logger.error("Failed to parse last bank number.")
-                    raise
+
+                logger.error("Failed to parse last bank number.")
+                raise ValueError("Last bank number was not found in response.")
