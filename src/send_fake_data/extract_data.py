@@ -12,7 +12,7 @@ logger = logging.getLogger(name=__name__)
 def extract_data(ascent: ASCENT) -> pd.DataFrame:
 
     bank = ascent.reboot_to_data_extractor()
-    ascent.send_command(f"{bank}");
+    ascent.send_command(f"{bank}\n");
 
     output: list[HITLData] = []
 
