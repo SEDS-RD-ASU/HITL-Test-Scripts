@@ -140,12 +140,17 @@ class ASCENT:
         )
         self.send_command("DUMP")
         # We then get a statement "Enter the bank to dump (last bank used: %ld):\n" and need to extract the bank number from it.
-        line = self.read_response()
-        if line and "last bank used:" in line:
-            try:
-                last_bank = int(line.split("last bank used:")[1].strip().split()[0])
-                logger.info(f"Last bank used: {last_bank}")
-                return last_bank
-            except ValueError:
-                logger.error("Failed to parse last bank number.")
-                raise
+        line = ""
+
+        while True:
+            response = self.read_response()
+            if response:
+                line += response.strip()
+            if line and "last bank used:" in line:
+                try:
+                    last_bank = int(line.split("last bank used:")[1].strip().split()[0])
+                    logger.info(f"Last bank used: {last_bank}")
+                    return last_bank
+                except ValueError:
+                    logger.error("Failed to parse last bank number.")
+                    raise
