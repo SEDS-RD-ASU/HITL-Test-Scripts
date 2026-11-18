@@ -1,3 +1,4 @@
+import io
 import logging
 from collections import deque
 from dataclasses import asdict, fields
@@ -81,7 +82,76 @@ def extract_data(ascent: ASCENT) -> pd.DataFrame:
             except Exception as e:
                 logger.error(f"Failed to parse line: {line}. Error: {e}")
 
-    return pd.DataFrame.from_records(
-        [asdict(record) for record in output],
-        columns=[field.name for field in fields(HITLData)],
-    )
+        line_buffer += response
+        complete_lines = line_buffer.split("\n")
+        line_buffer = complete_lines.pop()
+        line_queue.extend(line.rstrip("\r") for line in complete_lines)
+
+        if line_buffer.startswith("FINISHED DUMPING DATA"):
+            line_buffer = ""
+            finished = True
+
+        while line_queue:
+            line = line_queue.popleft().strip()
+            if not line:
+                continue
+            if line.startswith("FINISHED DUMPING DATA"):
+                finished = True
+                break
+            if line.startswith("n,timestamp,bat_voltage,flight_state,pyro_cont"):
+                # skip the header line
+                continue
+            # parse the CSV line into a SimOutput object
+            try:
+                values = [float(x) for x in line.split(",")]
+                record = HITLData(
+                    n=int(values[0]),
+                    timestamp=int(values[1]),
+                    bat_voltage=values[2],
+                    flight_state=FlightState(int(values[3])),
+                    pyro_cont=int(values[4]),
+                    pressure=values[5],
+                    temperature=values[6],
+                    altitude_agl=values[7],
+                    ground_altitude=values[8],
+                    baro_vel=values[9],
+                    avg_baro_vel=values[10],
+                    UTCtstamp=int(values[11]),
+                    lat=int(values[12]),
+                    lon=int(values[13]),
+                    altitude_ellipsoid=int(values[14]),
+                    altitude_msl=int(values[15]),
+                    fixType=int(values[16]),
+                    num_sats=int(values[17]),
+                    acc_x=values[18],
+                    acc_y=values[19],
+                    acc_z=values[20],
+                    hacc_x=values[21],
+                    hacc_y=values[22],
+                    hacc_z=values[23],
+                    gyr_x=values[24],
+                    gyr_y=values[25],
+                    gyr_z=values[26],
+                )
+                output.append(record)
+            except Exception as e:
+                logger.error(f"Failed to parse line: {line}. Error: {e}")
+
+    # convert the string to a file-like object and read it as a CSV
+    with io.StringIO(data) as f:
+        df = pd.read_csv(f, header=0, names=[field.name for field in fields(HITLData)], skip_blank_lines=True)
+        # convert all the columns to the correct type
+        for field in fields(HITLData):
+            if field.type == float:
+                df[field.name] = df[field.name].astype(float)
+            elif field.type == int:
+                df[field.name] = df[field.name].astype(int)
+            elif field.type == str:
+                df[field.name] = df[field.name].astype(str)
+            elif field.type == FlightState:
+                df[field.name] = df[field.name].apply(lambda x: FlightState(x))
+            else:
+                raise ValueError(f"Unsupported type {field.type} for field {field.name}")
+    logger.info(f"\nExtracted {len(df)} samples from ASCENT\n")
+    logger.info(f"\nExtracted data:\n{df.head(100)}\n")
+    return df
