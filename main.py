@@ -30,6 +30,10 @@ if __name__ == "__main__":
     logger.info("Extracting data from ASCENT board...")    
     data = extract_data(ascent)
 
+    # TODO: IMPLEMENT MORE OF THESE
+    logger.info("Checking test outputs...")
+    exit_code = run_test_scripts(data)
+
     logger.info("Analyzing data")
     plots = [
         plots.delta_t(data),
