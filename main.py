@@ -1,14 +1,14 @@
 """Main file that will run the full HITL Test suite."""
-
 import logging
 import sys
 
-from src import plots
 from src.cmd_line_parser import parser
 from src.discord_interaction.send_message import send_message
+from src.plots import generate_plots
 from src.send_fake_data.ASCENT_interface import ASCENT
 from src.send_fake_data.extract_data import extract_data
 from src.send_fake_data.upload import upload_fake_data
+from src.test_requirements import run_test_scripts
 
 logger = logging.getLogger(name=__name__)
 
@@ -30,14 +30,11 @@ if __name__ == "__main__":
     logger.info("Extracting data from ASCENT board...")    
     data = extract_data(ascent)
 
-    # TODO: IMPLEMENT MORE OF THESE
     logger.info("Checking test outputs...")
-    exit_code = run_test_scripts(data)
+    tests_results = run_test_scripts(data)
 
-    logger.info("Analyzing data")
-    plots = [
-        plots.delta_t(data),
-    ]
+    logger.info("Generating plots")
+    plots = generate_plots(data)
 
     logger.info("Sending data to discord...")
     send_message(plot_paths=plots, skipped=-1, webhook_url=args.webhook_url)
