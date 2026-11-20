@@ -1,10 +1,10 @@
-import pandas as pd
+# import pandas as pd
 
 from .test__state_machine_stays_in_pad_state import (
     test__state_machine_stays_in_pad_state,
 )
 
-def run_test_scripts(data: pd.DataFrame) -> dict(str, tuple[bool, str]):
+def run_test_scripts(data):
     # implement running test scripts here
     tests: dict[str, tuple[bool, str]] = {}
 
