@@ -52,7 +52,7 @@ class ASCENT:
         Args:
             command (str): The command to send.
         """
-        self.raw_send(command.encode("utf-8"))
+        self.raw_send((command + "\n").encode("utf-8"))
 
     def reset_board(self):
         """Pulse RTS to reset the board (assumes RTS is wired to NRST/EN via the adapter)."""
@@ -138,7 +138,7 @@ class ASCENT:
         self.wait_for_string(
             'You have 5 seconds to enter "DUMP" to enter data dumping mode'
         )
-        self.send_command("DUMP\n")
+        self.send_command("DUMP")
         # We then get a statement "Enter the bank to dump (last bank used: %ld):\n" and need to extract the bank number from it.
         line = ""
 

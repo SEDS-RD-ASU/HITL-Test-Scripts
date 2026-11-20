@@ -24,7 +24,7 @@ FLASH_PACKET_FORMAT = "<QqfBB2xddddddIIIII BB2x fff fff fff 4x"
 FLASH_PACKET_SIZE = struct.calcsize(FLASH_PACKET_FORMAT)
 
 DELIMITER = b"\n\n\n\n"
-PREPARE_COMMAND = "PREPARE\n"
+PREPARE_COMMAND = "PREPARE"
 
 logger = getLogger(name=__name__)
 
