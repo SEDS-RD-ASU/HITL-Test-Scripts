@@ -13,29 +13,42 @@ logger = logging.getLogger(name=__name__)
 def extract_data(ascent: ASCENT) -> pd.DataFrame:
 
     bank = ascent.reboot_to_data_extractor()
-    ascent.send_command(f"{bank}");
+    ascent.send_command(f"{bank}")
 
-    data = ""
-
+    data_lines = []
+    buffer = ""
     finished = False
 
-    # keep reading data (CSV) until we read "FINISHED DUMPING DATA"
-    while finished == False:
-        line = ascent.read_response()
-        if line is None:
+    # UART reads may contain partial rows or several rows at once.
+    # Assemble complete newline-delimited rows before passing them to pandas.
+    while not finished:
+        chunk = ascent.read_response()
+        if chunk is None:
             continue
-        line = line.strip()
-        if  "FINISHED DUMPING DATA" in line:
-            line = line.replace("FINISHED DUMPING DATA", "")
+
+        buffer += chunk
+        if "FINISHED DUMPING DATA" in buffer:
+            buffer = buffer.split("FINISHED DUMPING DATA", 1)[0]
             finished = True
-        if line.startswith("n,timestamp,bat_voltage,flight_state,pyro_cont"):
-            # skip the header line
-            continue
-        data += line
+
+        while "\n" in buffer:
+            line, buffer = buffer.split("\n", 1)
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("n,timestamp,bat_voltage,flight_state,pyro_cont"):
+                continue
+            data_lines.append(line)
 
     # convert the string to a file-like object and read it as a CSV
-    with io.StringIO(data) as f:
-        df = pd.read_csv(f, header=0, names=[field.name for field in fields(HITLData)], skip_blank_lines=True)
+    column_names = [field.name for field in fields(HITLData)]
+    with io.StringIO("\n".join(data_lines)) as f:
+        df = pd.read_csv(
+            f,
+            header=None,
+            names=column_names,
+            skip_blank_lines=True,
+        )
         # convert all the columns to the correct type
         for field in fields(HITLData):
             if field.type == float:
@@ -47,7 +60,9 @@ def extract_data(ascent: ASCENT) -> pd.DataFrame:
             elif field.type == FlightState:
                 df[field.name] = df[field.name].apply(lambda x: FlightState(x))
             else:
-                raise ValueError(f"Unsupported type {field.type} for field {field.name}")
+                raise ValueError(
+                    f"Unsupported type {field.type} for field {field.name}"
+                )
     logger.info(f"\nExtracted {len(df)} samples from ASCENT\n")
     logger.info(f"\nExtracted data:\n{df.head(100)}\n")
     return df
