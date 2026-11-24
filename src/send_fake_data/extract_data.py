@@ -38,7 +38,7 @@ def extract_data(ascent: ASCENT) -> pd.DataFrame:
                 continue
             if line.startswith(
                 (
-                    "n,timestamp,bat_voltage,flight_state,pyro_cont",
+                    "n, timestamp, bat_voltage, flight_state, pyro_cont",
                     "DUMPING DATA FROM BANK:",
                 )
             ):
