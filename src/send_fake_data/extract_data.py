@@ -36,7 +36,12 @@ def extract_data(ascent: ASCENT) -> pd.DataFrame:
             line = line.strip()
             if not line:
                 continue
-            if line.startswith("n,timestamp,bat_voltage,flight_state,pyro_cont"):
+            if line.startswith(
+                (
+                    "n,timestamp,bat_voltage,flight_state,pyro_cont",
+                    "DUMPING DATA FROM BANK:",
+                )
+            ):
                 continue
             data_lines.append(line)
 
