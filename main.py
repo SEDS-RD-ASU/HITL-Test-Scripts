@@ -1,4 +1,5 @@
 """Main file that will run the full HITL Test suite."""
+
 import logging
 import sys
 
@@ -21,14 +22,18 @@ if __name__ == "__main__":
 
     if args.port is None:
         parser.error("No serial port was detected.")
-    
+
     ascent = ASCENT(args.port, args.baudrate)
     if not args.dump_only:
         logger.info("Uploading fake data...")
         upload_fake_data(ascent, args.data_path)
 
-    logger.info("Extracting data from ASCENT board...")    
+    logger.info("Extracting data from ASCENT board...")
     data = extract_data(ascent)
+
+    logger.info("Gathered the following columns from the ASCENT board:")
+    for column in data.columns:
+        logger.info(f" - {column} ({data[column].dtype})")
 
     logger.info("Checking test outputs...")
     tests_results = run_test_scripts(data)
@@ -37,6 +42,6 @@ if __name__ == "__main__":
     plots = generate_plots(data)
 
     logger.info("Sending data to discord...")
-    send_message(plot_paths=plots, skipped=-1, webhook_url=args.webhook_url)
+    send_message(plot_paths=plots, skipped=-1, webhook_url=args.discord_webhook_url)
 
     sys.exit(0)
