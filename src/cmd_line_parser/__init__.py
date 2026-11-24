@@ -26,7 +26,11 @@ port_devices = [port.device for port in ports]
 
 data_dir = pathlib.Path(__file__).parent.parent / "send_fake_data" / "sim_flight_data"
 data_files = [str(path) for path in data_dir.iterdir() if path.is_file()]
-default_data_path = data_dir / "scratchy_flight_data.csv" if (data_dir / "scratchy_flight_data.csv").exists() else data_files[0]
+default_data_path = (
+    data_dir / "irec_200hz.csv"
+    if (data_dir / "irec_200hz.csv").exists()
+    else data_files[0]
+)
 
 parser = argparse.ArgumentParser(
     prog="Hilt Test Suite",
@@ -75,5 +79,5 @@ parser.add_argument(
     "--discord-webhook-url",
     type=str,
     help="The URL of the Discord webhook to send the run report to.",
-    default=None
+    default=None,
 )
