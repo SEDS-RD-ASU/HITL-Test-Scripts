@@ -76,7 +76,7 @@ def pack_row(idx, row) -> bytes:
         0.0,  # ground_altitude
         0.0,  # baro_vel
         0.0,  # avg_baro_vel
-        time.time(),  # UTCtstamp
+        int(time.time()),  # UTCtstamp
         int(row["latitude"]) & 0xFFFFFFFF,  # lat
         int(row["longitude"]) & 0xFFFFFFFF,  # lon
         0,  # alt_ellipsoid
@@ -93,6 +93,7 @@ def pack_row(idx, row) -> bytes:
         float(row["gyry"]),  # gyr_y
         float(row["gyrz"]),  # gyr_z
     )
+
 
 def upload_fake_data(ASCENT: ASCENT, data_path: Path):
     """Uploads the fake data to ASCENT.
@@ -115,23 +116,28 @@ def upload_fake_data(ASCENT: ASCENT, data_path: Path):
     packets = [pack_row(idx, row) for idx, row in enumerate(df.to_dict("records"))]
     ASCENT.reboot_to_data_loader()
     ASCENT.send_command(PREPARE_COMMAND)
-    logger.info("Eracing flash chip. Note this will take a while (~5 minutes) with no feedback. Please be patient...")
+    logger.info(
+        "Eracing flash chip. Note this will take a while (~5 minutes) with no feedback. Please be patient..."
+    )
     # TODO: analysis the numbers that are send over the wire to see if we can get a progress bar
-    ASCENT.wait_for_string("SITL data is ready to enter flight computer", timeout=360.0) # erasing a bank takes lots of time :(
+    ASCENT.wait_for_string(
+        "SITL data is ready to enter flight computer", timeout=360.0
+    )  # erasing a bank takes lots of time :(
     t_start = time.perf_counter()
 
-    for idx in tqdm(range(total), desc="Sending Data", mininterval=10, unit="dataframes"):
+    for idx in tqdm(
+        range(total), desc="Sending Data", mininterval=10, unit="dataframes"
+    ):
         # Preserve the source dataset's sample timing and avoid cumulative drift.
         target_time = t_start + sample_times[idx] - sample_times[0]
         sleep_time = target_time - time.perf_counter()
 
         packet = packets[idx]
-        
+
         if sleep_time > 0:
             time.sleep(sleep_time)
 
         ASCENT.raw_send(packet + DELIMITER)
         ASCENT.wait_for_string("SITL ACK", timeout=1.0)
-
 
     logger.info(f"\nDone sending data. Sent {total} packets.")
