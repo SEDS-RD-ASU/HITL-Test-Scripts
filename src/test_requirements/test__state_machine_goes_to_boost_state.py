@@ -23,7 +23,7 @@ def test__state_machine_stays_in_pad_state(data: pd.DataFrame) -> tuple[bool, st
 
     # Get num ticks before the first Boost state
     start_index = max(0, first_boost_index - num_ticks)
-    accel_data = data.loc[start_index:first_boost_index, "accel_z"]
+    accel_data = data.loc[start_index:first_boost_index, "acc_z"]
 
     # Check if all accel_data values are above the threshold
     if (accel_data > accel_thres).all():
