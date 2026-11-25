@@ -18,13 +18,19 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
     state_changes = all_data[~all_data["flight_state"].duplicated()]
 
     plt.figure(figsize=(10, 5))
-    plt.plot(data["timestamp"], data["delta_t"], marker="o", color="blue")
+    plt.plot(
+        data["timestamp"],
+        data["delta_t"],
+        marker="o",
+        color="blue",
+        linestyle="None",
+        label="Delta T (ms)",
+    )
 
     # show all the flight state changes and the new state name
     for idx, row in state_changes.iterrows():
         plt.axvline(
             x=row["timestamp"],
-            color="red",
             linestyle="--",
             alpha=0.5,
             label=f"{FlightState(row['flight_state']).name}",
@@ -33,6 +39,7 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
     plt.xlabel("Timestamp")
     plt.ylabel("Time Difference (ms)")
     plt.title("Delta T")
+    plt.legend()
     plt.grid(True)
 
     # Save the plot to a BytesIO object
