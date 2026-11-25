@@ -19,7 +19,7 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
     data = data[["timestamp", "delta_t"]].dropna()
     state_changes = all_data[~all_data["flight_state"].duplicated()]
 
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(11, 8.5))
     plt.plot(
         data["timestamp"],
         data["delta_t"],
@@ -30,8 +30,8 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
     )
     delta_t_mean = data["delta_t"].mean()
     delta_t_std = data["delta_t"].std()
-    lower_bound = delta_t_mean - 3 * delta_t_std
-    upper_bound = delta_t_mean + 3 * delta_t_std
+    lower_bound = delta_t_mean - 1000
+    upper_bound = delta_t_mean + 1000
     plt.ylim(lower_bound, upper_bound)
     plt.axhline(
         delta_t_mean,
@@ -59,7 +59,7 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
             [upper_bound - edge_offset] * len(upper_outliers),
             color="tab:red",
             marker="^",
-            label=f"Outlier > +3 SD (n={len(upper_outliers)})",
+            label=f"Outlier > mean + 1000 µs (n={len(upper_outliers)})",
             zorder=3,
         )
     if not lower_outliers.empty:
@@ -68,7 +68,7 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
             [lower_bound + edge_offset] * len(lower_outliers),
             color="tab:red",
             marker="v",
-            label=f"Outlier < -3 SD (n={len(lower_outliers)})",
+            label=f"Outlier < mean - 1000 µs (n={len(lower_outliers)})",
             zorder=3,
         )
 
@@ -83,7 +83,7 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
         )
 
     plt.xlabel("Timestamp")
-    plt.ylabel("Time Difference (ms)")
+    plt.ylabel("Time Difference (µs)")
     plt.title("Delta T")
     plt.legend(loc="upper left", bbox_to_anchor=(1.02, 1))
     plt.grid(True)
