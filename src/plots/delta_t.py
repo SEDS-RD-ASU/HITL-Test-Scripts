@@ -1,3 +1,5 @@
+from src.shared_types import FlightState
+from tkinter import Label
 from io import BytesIO
 from typing import BinaryIO
 
@@ -5,17 +7,29 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 
-def delta_t(data: pd.DataFrame) -> BinaryIO:
+def delta_t(all_data: pd.DataFrame) -> BinaryIO:
     """
     Create a graph of the time difference between consecutive timestamps in the data.
     The graph will be saved as a PNG file and the file object will be returned.
     """
-    data = data.copy()
+    data = all_data.copy()
     data["delta_t"] = data["timestamp"].diff()
     data = data[["timestamp", "delta_t"]].dropna()
+    state_changes = all_data[~all_data["flight_state"].duplicated()]
 
     plt.figure(figsize=(10, 5))
     plt.plot(data["timestamp"], data["delta_t"], marker="o", color="blue")
+
+    # show all the flight state changes and the new state name
+    for idx, row in state_changes.iterrows():
+        plt.axvline(
+            x=row["timestamp"],
+            color="red",
+            linestyle="--",
+            alpha=0.5,
+            Label=f"{FlightState(row['flight_state']).name}",
+        )
+
     plt.xlabel("Timestamp")
     plt.ylabel("Time Difference (ms)")
     plt.title("Delta T")
