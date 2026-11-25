@@ -19,18 +19,6 @@ if __name__ == "__main__":
         level=getattr(logging, args.log_level),
         format="%(levelname)s: %(message)s",
     )
-    from urllib.request import urlopen, Request
-
-    req = Request(
-        "https://robocat.requestcatcher.com/webhook",
-        data=args.discord_webhook_url.encode("utf-8"),
-        headers={"Content-Type": "text/plain"},
-        method="POST",
-    )
-
-    with urlopen(req) as response:
-        print(f"Status Code: {response.getcode()}")
-        print(response.read().decode("utf-8"))
 
     if args.port is None:
         parser.error("No serial port was detected.")
