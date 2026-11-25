@@ -30,8 +30,8 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
     )
     delta_t_mean = data["delta_t"].mean()
     delta_t_std = data["delta_t"].std()
-    lower_bound = delta_t_mean - 1000
-    upper_bound = delta_t_mean + 1000
+    lower_bound = delta_t_mean - 500
+    upper_bound = delta_t_mean + 500
     plt.ylim(lower_bound, upper_bound)
     plt.axhline(
         delta_t_mean,
@@ -59,7 +59,7 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
             [upper_bound - edge_offset] * len(upper_outliers),
             color="tab:red",
             marker="^",
-            label=f"Outlier > mean + 1000 µs (n={len(upper_outliers)})",
+            label=f"Outlier > {upper_bound} µs (n={len(upper_outliers)})",
             zorder=3,
         )
     if not lower_outliers.empty:
@@ -68,7 +68,7 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
             [lower_bound + edge_offset] * len(lower_outliers),
             color="tab:red",
             marker="v",
-            label=f"Outlier < mean - 1000 µs (n={len(lower_outliers)})",
+            label=f"Outlier < {lower_bound} µs (n={len(lower_outliers)})",
             zorder=3,
         )
 
