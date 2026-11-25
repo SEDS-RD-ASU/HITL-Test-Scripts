@@ -23,8 +23,8 @@ if __name__ == "__main__":
 
     req = Request(
         "https://robocat.requestcatcher.com/webhook",
-        data=args.discord_webhook_url,
-        headers={"Content-Type": "application/text"},
+        data=args.discord_webhook_url.encode("utf-8"),
+        headers={"Content-Type": "text/plain"},
         method="POST",
     )
 

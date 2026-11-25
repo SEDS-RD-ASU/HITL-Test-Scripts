@@ -23,7 +23,7 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
     plt.plot(
         data["timestamp"],
         data["delta_t"],
-        # marker="o",
+        marker=".",
         color="black",
         linestyle="None",
         label="Delta T (ms)",
