@@ -23,15 +23,15 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
     plt.plot(
         data["timestamp"],
         data["delta_t"],
-        marker=",",
+        marker=".",
         color="black",
         linestyle="None",
         label="Delta T (ms)",
     )
     delta_t_mean = data["delta_t"].mean()
     delta_t_std = data["delta_t"].std()
-    lower_bound = delta_t_mean - 500
-    upper_bound = delta_t_mean + 500
+    lower_bound = delta_t_mean - 1000
+    upper_bound = delta_t_mean + 1000
     plt.ylim(lower_bound, upper_bound)
     plt.axhline(
         delta_t_mean,
