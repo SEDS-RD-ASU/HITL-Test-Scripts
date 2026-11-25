@@ -1,10 +1,10 @@
-from src.shared_types import FlightState
-from tkinter import Label
 from io import BytesIO
 from typing import BinaryIO
 
 import pandas as pd
 from matplotlib import pyplot as plt
+
+from src.shared_types import FlightState
 
 
 def delta_t(all_data: pd.DataFrame) -> BinaryIO:
@@ -27,7 +27,7 @@ def delta_t(all_data: pd.DataFrame) -> BinaryIO:
             color="red",
             linestyle="--",
             alpha=0.5,
-            Label=f"{FlightState(row['flight_state']).name}",
+            label=f"{FlightState(row['flight_state']).name}",
         )
 
     plt.xlabel("Timestamp")
