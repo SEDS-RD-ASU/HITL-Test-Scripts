@@ -14,5 +14,8 @@ def run_test_scripts(data):
     tests["State Machine stays in PAD State until 3g for 5ticks"] = (
         test__state_machine_stays_in_pad_state(data)
     )
+    tests["State Machine goes to BOOST State at 3g for 5ticks"] = (
+        test__state_machine_goes_to_boost_state(data)
+    )
 
     return tests
