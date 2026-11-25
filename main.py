@@ -19,6 +19,7 @@ if __name__ == "__main__":
         level=getattr(logging, args.log_level),
         format="%(levelname)s: %(message)s",
     )
+    logger.info(args.discord_webhook_url)
 
     if args.port is None:
         parser.error("No serial port was detected.")
@@ -43,10 +44,18 @@ if __name__ == "__main__":
         for test_name, result in tests_results.items()
     )
 
+    logger.info("Test results:")
+    logger.info(message)
+
     logger.info("Generating plots")
     plots = generate_plots(data)
 
     logger.info("Sending data to discord...")
-    send_message(plot_paths=plots, message=message, skipped=-1, webhook_url=args.discord_webhook_url)
+    send_message(
+        plot_paths=plots,
+        message=message,
+        skipped=-1,
+        webhook_url=args.discord_webhook_url,
+    )
 
     sys.exit(0)
