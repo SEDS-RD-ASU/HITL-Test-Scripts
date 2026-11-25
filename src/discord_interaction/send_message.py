@@ -10,7 +10,13 @@ logger = logging.getLogger(name=__name__)
 
 
 def _commit_link() -> str:
-    return f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/blob/{os.environ['GITHUB_SHA']}"
+    try:
+        return f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/blob/{os.environ['GITHUB_SHA']}"
+    except KeyError:
+        logger.warning(
+            "GITHUB_SERVER_URL, GITHUB_REPOSITORY, or GITHUB_SHA environment variable not set. Cannot generate commit link."
+        )
+        return "Error getting commit link"
 
 
 def _multipart_payload(message: str, plots: list[BinaryIO]) -> tuple[bytes, str]:
@@ -45,7 +51,7 @@ def send_message(
 
     message = (
         f"HITL run complete\n"
-        f"Firmware commit: [{os.environ['GITHUB_SHA']}]({_commit_link()})\n"
+        f"Firmware commit: [{os.environ.get('GITHUB_SHA', 'Unknown')}]({_commit_link()})\n"
         f"Skipped packets: {skipped}\n"
         f"{message}"
     )
@@ -65,6 +71,7 @@ def send_message(
             pass
     except urllib.error.HTTPError as error:
         details = error.read().decode("utf-8", errors="replace")
+        logger.error(f"Discord rejected the webhook ({error.code}): {details}")
         raise RuntimeError(
             f"Discord rejected the webhook ({error.code}): {details}"
         ) from error
