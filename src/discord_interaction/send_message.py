@@ -8,6 +8,7 @@ from typing import BinaryIO
 
 logger = logging.getLogger(name=__name__)
 
+
 def _commit_link() -> str:
     return f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/blob/{os.environ['GITHUB_SHA']}"
 
@@ -35,8 +36,9 @@ def _multipart_payload(message: str, plots: list[BinaryIO]) -> tuple[bytes, str]
     return body, boundary
 
 
-
-def send_message(plot_paths: list[BinaryIO], skipped: int, webhook_url: str | None) -> None:
+def send_message(
+    plot_paths: list[BinaryIO], message: str, skipped: int, webhook_url: str | None
+) -> None:
     if webhook_url is None:
         logger.warning("No Discord webhook URL provided. Skipping report sending.")
         return
@@ -44,7 +46,8 @@ def send_message(plot_paths: list[BinaryIO], skipped: int, webhook_url: str | No
     message = (
         f"HITL run complete\n"
         f"Firmware commit: [{os.environ['GITHUB_SHA']}]({_commit_link()})\n"
-        f"Skipped packets: {skipped}"
+        f"Skipped packets: {skipped}\n"
+        f"{message}"
     )
     body, boundary = _multipart_payload(message, plot_paths)
     request = urllib.request.Request(

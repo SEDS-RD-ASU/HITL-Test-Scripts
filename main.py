@@ -37,11 +37,16 @@ if __name__ == "__main__":
 
     logger.info("Checking test outputs...")
     tests_results = run_test_scripts(data)
+    message = "\n".join(
+        f"{test_name}: {'PASS' if result[0] else 'FAIL'}"
+        + (f" - {result[1]}" if result[1] else "")
+        for test_name, result in tests_results.items()
+    )
 
     logger.info("Generating plots")
     plots = generate_plots(data)
 
     logger.info("Sending data to discord...")
-    send_message(plot_paths=plots, skipped=-1, webhook_url=args.discord_webhook_url)
+    send_message(plot_paths=plots, message=message, skipped=-1, webhook_url=args.discord_webhook_url)
 
     sys.exit(0)
