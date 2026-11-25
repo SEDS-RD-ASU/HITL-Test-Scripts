@@ -29,15 +29,15 @@ def test__state_machine_stays_in_pad_state(data: pd.DataFrame) -> tuple[bool, st
     # Get num ticks before the first non-PAD state
     start_index = first_non_pad_index - num_ticks
     accel_data = data.loc[start_index:first_non_pad_index, "acc_z"]
-    
+
     # Check if all accel_data values are above the threshold
     if (accel_data > accel_thres).all():
         return (
             True,
-            "State machine left PAD state after exceeding acceleration threshold for required duration",
+            "",
         )
     else:
         return (
             False,
-            "State machine left PAD state before exceeding acceleration threshold for required duration",
+            f"State machine goes into Boost state before exceeding acceleration threshold for required duration. Last few ticks before Boost state: {accel_data.tolist()}",
         )

@@ -28,10 +28,10 @@ def test__state_machine_goes_to_boost_state(data: pd.DataFrame) -> tuple[bool, s
     if (accel_data > accel_thres).all():
         return (
             True,
-            "State machine goes into Boost state after exceeding acceleration threshold for required duration",
+            "",
         )
     else:
         return (
             False,
-            "State machine goes into Boost state before exceeding acceleration threshold for required duration",
+            f"State machine goes into Boost state before exceeding acceleration threshold for required duration. Last few ticks before Boost state: {accel_data.tolist()}",
         )
